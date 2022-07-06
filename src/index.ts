@@ -21,7 +21,7 @@ export interface Contest {
     participants: Participant[];
 }
 
-export default async function getContest(contestId: string): Promise<Contest> {
+export async function getContest(contestId: string): Promise<Contest> {
     const document = await fetch(
         `https://contest.stavdeti.ru/olympiad/${contestId}/show-monitor`
     ).then((res) => res.text());
