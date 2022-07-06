@@ -1,14 +1,14 @@
 {
-  "name": "@lksh-2020/standings",
-  "version": "1.0.0",
-  "description": "",
+  "name": "stavdeti-api",
+  "version": "2.0.0",
+  "description": "HTML based api for contest.stavdeti.ru",
   "main": "./dist/index.js",
   "scripts": {
     "start": "node ./dist/index.js",
     "build": "tsc --build",
     "clean": "tsc --build --clean"
   },
-  "author": "",
+  "author": "unknowableshade",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^17.0.33",

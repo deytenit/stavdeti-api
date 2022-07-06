@@ -1,64 +1,98 @@
-import { writeFile } from "fs/promises";
-import config from "./config";
-import { getLeaderboard, LeaderboardEntry } from "./StavliderAPI";
+import fetch from "node-fetch";
 
-getLeaderboard(config.contests).then(async (leaderboard) => {
-    let tableHead = tableHeadGenerator(leaderboard.contests);
-    let tableBody = tableBodyGenerator(leaderboard.entries);
+export interface Task {
+    status: "AC" | "WA" | "NS" | "BN";
+    attempts: number;
+    penalty: number | null;
+}
 
-    await writeFile(process.argv[2] || "output.html", tableHead + tableBody);
+export interface Participant {
+    rank: number;
+    user: string;
+    tasks: Task[];
+    solved: number;
+    penalty: number;
+}
 
-    console.log("✓ Successfuly generated leaderboard table!");
-});
+export interface Contest {
+    id: string;
+    title: string;
+    amount: number;
+    participants: Participant[];
+}
 
-function tableHeadGenerator(
-    contests: { id: number; title: string; amount: number }[]
-): string {
-    let tr1 = `    <tr>
-        <th rowspan="2">#</th>
-        <th rowspan="2">Participant</th>
-        <th rowspan="2">Solved</th>
-        <th rowspan="2">Penalty</th>
-`;
+export default async function getContest(contestId: string): Promise<Contest> {
+    const document = await fetch(
+        `https://contest.stavdeti.ru/olympiad/${contestId}/show-monitor`
+    ).then((res) => res.text());
 
-    let tr2 = "    <tr>\n";
+    const title = document.match(/(?<=<span class="page-title">)(\n||.)*?(?=<\/span>)/)?.at(0)?.trim();
 
-    for (const contest of contests) {
-        tr1 += `        <th colspan="${contest.amount}">${contest.title}</th>\n`;
-        for (let i = 0; i < contest.amount; i++) {
-            tr2 += `    <th>${String.fromCharCode(65 + i)}</th>\n`;
+    const amount = document
+        .slice(document.indexOf("<thead>"), document.indexOf("</thead>"))
+        .match(/<th class="task">/g)?.length;
+
+    return {
+        id: contestId,
+        title: title || "",
+        amount: amount || 0,
+        participants: bodyDeserializer(
+            document.slice(
+                document.indexOf("<tbody>"),
+                document.indexOf("</tbody>")
+            )
+        )
+    };
+}
+
+function bodyDeserializer(body: string): Participant[] {
+    let result: Participant[] = [];
+
+    const trs = body.split("<tr>");
+
+    for (const tr of trs) {
+        const rank = tr.match(/(?<=<td class="rank">)(\n||.)*?(?=<)/)?.at(0)?.trim();
+        const user = tr.match(/(?<=<td class="user">)(\n||.)*?(?=<)/)?.at(0)?.trim();
+        const solved = tr.match(/(?<=<td class="solved">)(\n||.)*?(?=<)/)?.at(0)?.trim();
+        const penalty = tr.match(/(?<=<td class="time">)(\n||.)*?(?=<)/)?.at(0)?.trim();
+
+        const tmp = Array.from(tr.matchAll(/(?<=<td class="task">)(\n||.)*?(?=<\/td>)/g), (value) => value[0]);
+
+        const tasks = tasksDeserializer(tmp || []);
+
+        if (rank && user && solved && penalty && tasks) {
+            result.push({
+                rank: parseInt(rank),
+                user: user,
+                solved: parseInt(solved),
+                penalty: parseInt(penalty),
+                tasks: tasks,
+            });
         }
     }
 
-    tr1 += "    </tr>\n";
-    tr2 += "    </tr>\n";
-
-    return "<thead>\n" + tr1 + tr2 + "</thead>\n";
+    return result;
 }
 
-function tableBodyGenerator(entries: LeaderboardEntry[]): string {
-    let body = "";
+function tasksDeserializer(tasksInner: string[]): Task[] {
+    let result: Task[] = [];
 
-    for (let i = 0; i < entries.length; i++) {
-        let tr = `    <tr>
-        <td>${i + 1}</td>
-        <td>${entries[i].user}</td>
-        <td>${entries[i].solved}</td>
-        <td>${entries[i].penalties}</td>
-`;
+    for (const task of tasksInner) {
+        const matchStatus = task.match(/(?<=<span class="((AC)|(NS)|(WA))">)(\n||.)*?(?=<)/)?.at(0)?.trim();
+        const matchPenalty = task.match(/(?<=<span class="TM">)(\n||.)*?(?=<)/)?.at(0)?.trim();
 
-        for (const task of entries[i].tasks) {
-            tr += `        <td class="${classDeterminer(task)}">${task}</td>\n`;
-        }
+        if (!matchStatus) continue;
 
-        tr += "    </tr>\n";
+        const attempts = matchStatus.length > 1 ? parseInt(matchStatus.slice(1)) : matchStatus === "." ? 0 : 1;
+        const status = matchStatus[0] === "+" ? "AC" : matchStatus[0] === "-" ? "WA" : "NS";
+        const penalty = matchPenalty ? parseFloat(matchPenalty.replace(":", ".")) : null;
 
-        body += tr;
+        result.push({
+            status: status,
+            penalty: penalty,
+            attempts: attempts
+        });
     }
 
-    return "<tbody>\n" + body + "</tbody>\n";
-}
-
-function classDeterminer(task: string): string {
-    return task.startsWith("+") ? "AC" : task.startsWith("-") ? "WA" : "NS";
+    return result;
 }
