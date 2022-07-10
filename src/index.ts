@@ -26,7 +26,7 @@ export async function getContest(contestId: string): Promise<Contest> {
         `https://contest.stavdeti.ru/olympiad/${contestId}/show-monitor`
     ).then((res) => res.text());
 
-    const title = document.match(/(?<=<span class="page-title">)(\n||.)*?(?=<\/span>)/)?.at(0)?.trim();
+    const title = document.match(/(?<=<span class="page-title">)(\n||.)*?(?=\(\d+?:\d+?:\d+?( ||\n)+?из( ||\n)+?\d+?:\d+?:\d+?\)(.||\n)*?<\/span>)/)?.at(0)?.trim();
 
     const amount = document
         .slice(document.indexOf("<thead>"), document.indexOf("</thead>"))

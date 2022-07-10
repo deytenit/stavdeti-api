@@ -1,13 +1,14 @@
 {
   "name": "stavdeti-api",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "HTML based api for contest.stavdeti.ru",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": ["./dist"],
   "scripts": {
     "start": "node ./dist/index.js",
-    "build": "tsc",
-    "postinstall": "npm run build"
+    "build": "tsc --build",
+    "prepublish": "npm run build"
   },
   "author": "unknowableshade",
   "license": "ISC",
