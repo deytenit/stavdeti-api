@@ -83,8 +83,8 @@ function tasksDeserializer(tasksInner: string[]): Task[] {
 
         if (!matchStatus) continue;
 
-        const attempts = matchStatus.length > 1 ? parseInt(matchStatus.slice(1)) : matchStatus === "." ? 0 : 1;
         const status = matchStatus[0] === "+" ? "AC" : matchStatus[0] === "-" ? "WA" : "NS";
+        const attempts = matchStatus.length > 1 ? parseInt(matchStatus.slice(1)) : 0 + status === "AC" ? 1 : 0;;
         const penalty = matchPenalty ? parseFloat(matchPenalty.replace(":", ".")) : null;
 
         result.push({
